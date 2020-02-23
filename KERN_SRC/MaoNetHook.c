@@ -10,6 +10,8 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 #include "MaoNetHook.h"
 #include <linux/slab.h>
 #include <net/net_namespace.h>
+#include <linux/netfilter.h>
+#include <linux/netfilter_ipv4.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jianwei Mao");
@@ -66,19 +68,69 @@ static struct kobj_type mao_sysfs_type = {
 
 
 
+static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
+{
+	char packet_buf[PAGE_SIZE];
+	memset(packet_buf, 0, PAGE_SIZE);
+
+	int i;
+	for (i = 0; i < skb->len; i++)
+	{
+		sprintf(statusBuff+i*2, "%02X", skb->head[i]);
+	}
+	statusBuff[i*2] = '\n';
+	statusBuff[i*2+1] = 0;
+
+	sprintf(packet_buf, "MaoHookGet, netns:%d, len:%d, ts:%d, mh:%d, ml:%d, nh:%d, th:%d; %X, %X, %X, %X",
+			state->net->ifindex,
+			skb->len,
+			skb->truesize,
+			skb->mac_header,
+			skb->mac_len,
+			skb->network_header,
+			skb->transport_header,
+			skb->head,
+			skb->data,
+			skb->end,
+			skb->tail);
+
+	strcat(statusBuff, packet_buf);
+
+	return NF_ACCEPT;
+}
+
+static struct nf_hook_ops all_netns_hook_ops = {
+		.hook = mao_nf_hook,
+		.pf = NFPROTO_IPV4,
+		.hooknum = 3,
+		.priority = NF_IP_PRI_FIRST,
+};
+
+
+
+
+
+
+
+
+
 
 static int __net_init netns_hook_init(struct net *net)
 {
+
+	PINFO("NETNS_HOOK_INIT: %d, HookRet:%d", net->ifindex, nf_register_net_hook(net, &all_netns_hook_ops));
 
 	return 0;
 }
 
 static void __net_exit netns_hook_exit(struct net *net)
 {
+	nf_unregister_net_hook(net, &all_netns_hook_ops);
 
+	PINFO("NETNS_HOOK_EXIT: %d", net->ifindex);
 }
 
-static struct pernet_operations all_net_ops = {
+static struct pernet_operations all_netns_ops = {
 		.init = netns_hook_init,
 		.exit = netns_hook_exit,
 };
@@ -96,16 +148,16 @@ static int __init MaoNetHook_init(void)
 {
 	/* TODO Auto-generated Function Stub */
 
-	PINFO("INIT\n");
+	PINFO("INIT");
 
 	statusBuff = kzalloc(PAGE_SIZE, GFP_KERNEL);
 
 	mao_sysfs_root = kobject_create_and_add("mao", NULL);
 	mao_sysfs_root->ktype = &mao_sysfs_type;
 
-	PINFO("%d", sysfs_create_file(mao_sysfs_root, &mao_sysfs_default_attr));
-
-
+	PINFO("%d, %d",
+			sysfs_create_file(mao_sysfs_root, &mao_sysfs_default_attr),
+			register_pernet_subsys(&all_netns_ops));
 
 
 	return 0;
@@ -113,7 +165,8 @@ static int __init MaoNetHook_init(void)
 
 static void __exit MaoNetHook_exit(void)
 {
-	/* TODO Auto-generated Function Stub */
+
+	unregister_pernet_subsys(&all_netns_ops);
 
 	sysfs_remove_file(mao_sysfs_root, &mao_sysfs_default_attr);
 
@@ -121,7 +174,7 @@ static void __exit MaoNetHook_exit(void)
 
 	kobject_del(mao_sysfs_root);
 
-	PINFO("EXIT\n");
+	PINFO("EXIT");
 
 }
 
