@@ -9,18 +9,19 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #include "MaoNetHook.h"
 #include <linux/slab.h>
+#include <net/net_namespace.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jianwei Mao");
 
 
 
-struct kobject * mao_sysfs_root;
-char * statusBuff;
+static struct kobject * mao_sysfs_root;
+static char * statusBuff;
 
 
 
-ssize_t	mao_sysfs_read(struct kobject * kobj, struct attribute * attr, char * buff)
+static ssize_t mao_sysfs_read(struct kobject * kobj, struct attribute * attr, char * buff)
 {
 //	int i;
 //	for (i = 0; i<PAGE_SIZE; i++)
@@ -34,7 +35,7 @@ ssize_t	mao_sysfs_read(struct kobject * kobj, struct attribute * attr, char * bu
 	return PAGE_SIZE - 1;
 }
 
-ssize_t	mao_sysfs_write(struct kobject * kobj, struct attribute * attr, const char * buff, size_t count)
+static ssize_t mao_sysfs_write(struct kobject * kobj, struct attribute * attr, const char * buff, size_t count)
 {
 	PINFO("WRITE, Dir: %s, File: %s, Buf:%s, Size:%ld, StrLen:%ld, ActualCount:%ld, %ld", kobj->name, attr->name, buff, sizeof(buff), strlen(buff), count, PAGE_SIZE);
 
@@ -46,19 +47,50 @@ ssize_t	mao_sysfs_write(struct kobject * kobj, struct attribute * attr, const ch
 	return count;
 }
 
-struct attribute mao_sysfs_default_attr = {
+static struct attribute mao_sysfs_default_attr = {
 		.name = "status",
 		.mode = 0666
 };
 
-struct sysfs_ops mao_sysfs_func = {
+static struct sysfs_ops mao_sysfs_func = {
 		.show = mao_sysfs_read,
 		.store = mao_sysfs_write
 };
 
-struct kobj_type mao_sysfs_type = {
+static struct kobj_type mao_sysfs_type = {
 		.sysfs_ops = &mao_sysfs_func
 };
+
+
+
+
+
+
+
+static int __net_init netns_hook_init(struct net *net)
+{
+
+	return 0;
+}
+
+static void __net_exit netns_hook_exit(struct net *net)
+{
+
+}
+
+static struct pernet_operations all_net_ops = {
+		.init = netns_hook_init,
+		.exit = netns_hook_exit,
+};
+
+
+
+
+
+
+
+
+
 
 static int __init MaoNetHook_init(void)
 {
@@ -72,6 +104,9 @@ static int __init MaoNetHook_init(void)
 	mao_sysfs_root->ktype = &mao_sysfs_type;
 
 	PINFO("%d", sysfs_create_file(mao_sysfs_root, &mao_sysfs_default_attr));
+
+
+
 
 	return 0;
 }
