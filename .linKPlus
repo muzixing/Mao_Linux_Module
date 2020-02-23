@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<General-info>
+    <Driver-name>MaoNetHook</Driver-name>
+    <Toolchain>Linux GCC</Toolchain>
+    <Architecture>x86_64</Architecture>
+    <hostMachineKernel>true</hostMachineKernel>
+    <Kernel-Version>/usr/src/linux-headers-5.3.0-40-generic</Kernel-Version>
+    <Licence>GPL</Licence>
+    <Author-name>JIanwei Mao</Author-name>
+    <location>/home/mao/kernel/workspace</location>
+    <wizardType>false</wizardType>
+    <wizardTypeInfo>false</wizardTypeInfo>
+</General-info>
