@@ -101,7 +101,7 @@ static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf
 	int i;
 	for (i = 0; i < skb->len; i++)
 	{
-		sprintf(writeP+i*2, "%02X", skb->head[i]);
+		sprintf(writeP+i*2, "%02X", skb->data[i]); // data - head = 16bytes, and they are all 0x00.
 	}
 	writeP[i*2] = '\n';
 	writeP[i*2+1] = 0;
