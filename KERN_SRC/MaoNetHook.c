@@ -7,11 +7,13 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 ===============================================================================
 */
 
+#include "MaoCommon.h"
 #include "MaoNetHook.h"
 #include <linux/slab.h>
 #include <net/net_namespace.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
+
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jianwei Mao");
@@ -70,17 +72,41 @@ static struct kobj_type mao_sysfs_type = {
 
 static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
-	char packet_buf[PAGE_SIZE];
-	memset(packet_buf, 0, PAGE_SIZE);
+	char stringPacket[PAGE_SIZE] = {0};
+	unsigned char * d = skb->data;
+	if ((d[0] >> 4) == 0x4)
+	{
+		unsigned short offset;
+		*((char*)(&offset)) = d[7]; *(((char*)(&offset)) + 1) = d[6];
+		offset &= 0x1FFF;
+		sprintf(stringPacket,
+				"IPv4\n"
+				"Ver: %d\tIHL:%d\tDSCP:%d\tECN:%d\tTotalLen:%d\n"
+				"PacketId:%d\tDF:%d\tMF:%d\tOffset:%d\n"
+				"TTL:%d\tProtocol:%d\tChecksum:%d\n"
+				"Src: %d.%d.%d.%d\tDst:%d.%d.%d.%d\n",
+				d[0] >> 4, d[0] & 0x0F, d[1] >> 2, d[1] & 0x03, m2s(d+2),
+				m2s(d+4), (d[6] >> 6) & 0x1, (d[6] >> 5) & 0x1, offset,//m2s((char*)&offset),
+				d[8], d[9], m2s(d+10),
+				d[12], d[13], d[14], d[15],
+				d[16], d[17], d[18], d[19]);
+		sprintf(statusBuff, stringPacket);
+	}
+
+
+
+
+	char * writeP = statusBuff + strlen(statusBuff);
 
 	int i;
 	for (i = 0; i < skb->len; i++)
 	{
-		sprintf(statusBuff+i*2, "%02X", skb->head[i]);
+		sprintf(writeP+i*2, "%02X", skb->head[i]);
 	}
-	statusBuff[i*2] = '\n';
-	statusBuff[i*2+1] = 0;
+	writeP[i*2] = '\n';
+	writeP[i*2+1] = 0;
 
+	char packet_buf[PAGE_SIZE] = {0};
 	sprintf(packet_buf, "MaoHookGet, netns:%d, len:%d, ts:%d, mh:%d, ml:%d, nh:%d, th:%d; %X, %X, %X, %X",
 			state->net->ifindex,
 			skb->len,
@@ -94,7 +120,7 @@ static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf
 			skb->end,
 			skb->tail);
 
-	strcat(statusBuff, packet_buf);
+	sprintf(writeP + (i*2+1), "%s", packet_buf);
 
 	return NF_ACCEPT;
 }
@@ -158,7 +184,6 @@ static int __init MaoNetHook_init(void)
 	PINFO("%d, %d",
 			sysfs_create_file(mao_sysfs_root, &mao_sysfs_default_attr),
 			register_pernet_subsys(&all_netns_ops));
-
 
 	return 0;
 }
