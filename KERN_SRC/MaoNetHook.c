@@ -79,6 +79,7 @@ static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf
 		unsigned short offset;
 		*((char*)(&offset)) = d[7]; *(((char*)(&offset)) + 1) = d[6];
 		offset &= 0x1FFF;
+
 		sprintf(statusBuff,
 				"IPv4\n"
 				"Ver: %d\tIHL:%d\tDSCP:%d\tECN:%d\tTotalLen:%d\n"
@@ -105,7 +106,6 @@ static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf
 	writeP[i*2] = '\n';
 	writeP[i*2+1] = 0;
 
-	char packet_buf[PAGE_SIZE] = {0};
 	sprintf(writeP + (i*2+1), "MaoHookGet, netns:%d, len:%d, ts:%d, mh:%d, ml:%d, nh:%d, th:%d; %X, %X, %X, %X",
 			state->net->ifindex,
 			skb->len,
@@ -118,8 +118,6 @@ static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf
 			skb->data,
 			skb->end,
 			skb->tail);
-
-	//strcat(statusBuff, packet_buf);
 
 	return NF_ACCEPT;
 }
