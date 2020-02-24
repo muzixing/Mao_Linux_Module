@@ -1,5 +1,6 @@
 
 obj-m		:= MaoNetHook.o
+ccflags-m	:= -O2
 
 PWD			:= $(shell pwd)
 KERN_SRC	:= /lib/modules/$(shell uname -r)/build/
