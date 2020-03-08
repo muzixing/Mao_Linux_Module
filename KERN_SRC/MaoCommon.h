@@ -23,5 +23,37 @@ inline unsigned short mao_ntohs_htons_val(unsigned short val)
 	return mao_ntohs_htons((char*)(&val));
 }
 
-#define m2s(firstP) mao_ntohs_htons(firstP)
-#define m2l(firstP) mao_ntohl_htonl(firstP)
+inline unsigned int mao_ntohl_htonl_val(unsigned int val)
+{
+	return mao_ntohl_htonl((char*)(&val));
+}
+
+#define m2s(firstP) mao_ntohs_htons((char*)(firstP))
+#define m2sv(us) mao_ntohs_htons_val(us)
+#define m2l(firstP) mao_ntohl_htonl((char*)(firstP))
+#define m2lv(ul) mao_ntohl_htonl_val(ul)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
