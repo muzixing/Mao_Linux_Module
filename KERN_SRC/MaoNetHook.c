@@ -67,12 +67,38 @@ static ssize_t mao_sysfs_write(struct kobject * kobj, struct attribute * attr, c
 	//PINFO("WRITE, Dir: %s, File: %s, Buf:%s, Size:%ld, StrLen:%ld, ActualCount:%ld, %ld",
 	//		kobj->name, attr->name, buff, sizeof(buff), strlen(buff), count, PAGE_SIZE);
 
-	memcpy(statusBuff, buff, count);
+
 
 	//PINFO("WRITE2, %ld, %ld, %ld, %d, %d, %d",
 	//		ksize(buff), count, strlen(buff), buff[count-1], buff[count], buff[count+1]);
 
-	return count;
+
+
+	//PINFO("READ, Dir: %s, File: %s, Buf:%s, Size:%ld, StrLen:%ld, %ld",
+	//		kobj->name, attr->name, buff, sizeof(buff), strlen(buff), PAGE_SIZE);
+
+	if (0 == strcmp(attr->name, MAO_SYSFS_FILE_STATUS)) {
+		if (count >= PAGE_SIZE) {
+			memcpy(statusBuff, buff, PAGE_SIZE-1);
+			statusBuff[PAGE_SIZE-1] = 0;
+			return PAGE_SIZE-1;
+		} else {
+			memcpy(statusBuff, buff, count);
+			statusBuff[count] = 0;
+			return count;
+		}
+
+	} else if (0 == strcmp(attr->name, MAO_SYSFS_FILE_FLOW_SRC)) {
+		return 0;
+	} else if (0 == strcmp(attr->name, MAO_SYSFS_FILE_FLOW_DST)) {
+		return 0;
+	} else if (0 == strcmp(attr->name, MAO_SYSFS_FILE_TUNNEL_SRC)) {
+		return 0;
+	} else if (0 == strcmp(attr->name, MAO_SYSFS_FILE_TUNNEL_DST)) {
+		return 0;
+	} else {
+		return 0;
+	}
 }
 
 
