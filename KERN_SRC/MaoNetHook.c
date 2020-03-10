@@ -165,7 +165,7 @@ static bool is_interest_flow(struct in6_addr * flow_addr_src, struct in6_addr * 
 			0 == memcmp(flow_addr_dst, &flow_dst, sizeof(*flow_addr_dst));
 }
 
-static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
+static unsigned int mao_encap_gsrv6(struct sk_buff *skb, const struct nf_hook_state *state)
 {
 	// encap G-SRv6
 
@@ -174,7 +174,6 @@ static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf
 	struct mao_gsrv6_gsid *gsid_list;
 	int cow_total_len;
 	int err;
-
 
 	/*** 0. catch inner ipv6 header ***/
 	inner_hdr = ipv6_hdr(skb);
@@ -329,11 +328,67 @@ static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf
 	return NF_ACCEPT;
 }
 
-static struct nf_hook_ops all_netns_hook_ops = {
-		.hook = mao_nf_hook,
-		.pf = NFPROTO_IPV6,
-		.hooknum = 3,
-		.priority = NF_IP_PRI_FIRST,
+static unsigned int mao_decap_gsrv6(struct sk_buff *skb, const struct nf_hook_state *state)
+{
+	return NF_ACCEPT;
+}
+
+static unsigned int mao_gsrv6_do_action(struct sk_buff *skb, const struct nf_hook_state *state)
+{
+	if (0) {
+		mao_decap_gsrv6(skb, state);
+	}
+	return NF_ACCEPT;
+}
+
+static unsigned int mao_nf_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
+{
+	unsigned int ret;
+
+	PINFO("hook: %d", state->hook);
+
+	if (NF_INET_LOCAL_OUT == state->hook) {
+		ret = mao_encap_gsrv6(skb, state);
+	} else if (NF_INET_PRE_ROUTING == state->hook) {
+		ret = mao_gsrv6_do_action(skb, state);
+	} else {
+		ret = NF_ACCEPT;
+	}
+
+	return ret;
+}
+
+static struct nf_hook_ops all_netns_hook_ops[] = {
+		{
+				.hook = mao_nf_hook,
+				.pf = NFPROTO_IPV6,
+				.hooknum = NF_INET_PRE_ROUTING,
+				.priority = NF_IP_PRI_FIRST,
+		},
+		{
+				.hook = mao_nf_hook,
+				.pf = NFPROTO_IPV6,
+				.hooknum = NF_INET_LOCAL_IN,
+				.priority = NF_IP_PRI_FIRST,
+		},
+		{
+				.hook = mao_nf_hook,
+				.pf = NFPROTO_IPV6,
+				.hooknum = NF_INET_FORWARD,
+				.priority = NF_IP_PRI_FIRST,
+		},
+		{
+				.hook = mao_nf_hook,
+				.pf = NFPROTO_IPV6,
+				.hooknum = NF_INET_LOCAL_OUT,
+				.priority = NF_IP_PRI_FIRST,
+		},
+		{
+				.hook = mao_nf_hook,
+				.pf = NFPROTO_IPV6,
+				.hooknum = NF_INET_POST_ROUTING,
+				.priority = NF_IP_PRI_FIRST,
+		}
 };
 
 
@@ -348,18 +403,26 @@ static struct nf_hook_ops all_netns_hook_ops = {
 static int __net_init netns_hook_init(struct net *net)
 {
 
-	PINFO("NETNS_HOOK_INIT: %d, %d, %d, %d, %d, HookRet:%d",
+	PINFO("NETNS_HOOK_INIT: %d, %d, %d, %d, %d, HookRet: %d, %d, %d, %d, %d",
 			net->ifindex,
 			net->netns_ids.idr_base, net->netns_ids.idr_next,
 			net->user_ns->owner, net->user_ns->group,
-			nf_register_net_hook(net, &all_netns_hook_ops));
+			nf_register_net_hook(net, all_netns_hook_ops),
+			nf_register_net_hook(net, all_netns_hook_ops+1),
+			nf_register_net_hook(net, all_netns_hook_ops+2),
+			nf_register_net_hook(net, all_netns_hook_ops+3),
+			nf_register_net_hook(net, all_netns_hook_ops+4));
 
 	return 0;
 }
 
 static void __net_exit netns_hook_exit(struct net *net)
 {
-	nf_unregister_net_hook(net, &all_netns_hook_ops);
+	nf_unregister_net_hook(net, all_netns_hook_ops);
+	nf_unregister_net_hook(net, all_netns_hook_ops+1);
+	nf_unregister_net_hook(net, all_netns_hook_ops+2);
+	nf_unregister_net_hook(net, all_netns_hook_ops+3);
+	nf_unregister_net_hook(net, all_netns_hook_ops+4);
 
 	PINFO("NETNS_HOOK_EXIT", net->ifindex);
 }
